@@ -8,3 +8,4 @@ class ModelConfig:
     output_cost_per_1m: float
     average_latency: float
     quality_tier: str
+    enabled: bool = True

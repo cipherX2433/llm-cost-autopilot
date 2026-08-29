@@ -1,0 +1,28 @@
+models:
+
+  gpt-4o-mini:
+    provider: openai
+    model_id: gpt-4o-mini
+    input_cost_per_1m: 0.0
+    output_cost_per_1m: 0.0
+    average_latency: 1.0
+    quality_tier: medium
+    enabled: true
+
+  claude-haiku:
+    provider: anthropic
+    model_id: claude-haiku
+    input_cost_per_1m: 0.0
+    output_cost_per_1m: 0.0
+    average_latency: 1.0
+    quality_tier: medium
+    enabled: true
+
+  llama3.2:
+    provider: ollama
+    model_id: llama3.2
+    input_cost_per_1m: 0.25
+    output_cost_per_1m: 2.0
+    average_latency: 2.0
+    quality_tier: low
+    enabled: false
