@@ -1,4 +1,5 @@
-import os
+import re
+from app.models.routing import ComplexityResult
 
 class ComplexityAnalyzer:
 
@@ -37,58 +38,177 @@ class ComplexityAnalyzer:
         "solve"
     ]
 
-    def analyze(self, prompt: str) -> str:
-        """
-        Returns:
-            tier_1
-            tier_2
-            tier_3
-        """
+    CONSTRAINT_KEYWORDS = [
+        "must",
+        "should",
+        "only",
+        "at least",
+        "at most",
+        "do not",
+        "don't",
+        "ensure",
+        "requirement"
+    ]
+
+    def analyze(self, prompt: str) -> ComplexityResult:
 
         normalized_prompt = prompt.lower().strip()
-        score = self._calculate_score(
-            normalized_prompt
-        )
 
-        if score >= 6:
-            return "tier_3"
-        elif score >= 3:
-            return "tier_2"
-        
-        return "tier_1"
-    
-    def _calculate_score(self, prompt: str) -> int:
         score = 0
+        reason = []
 
-        word_count = len(prompt.split())
+        # Propmt length
+        word_count = len(normalized_prompt.split())
 
         if word_count > 300:
             score += 3
+
+            reason.append(
+                "Very long prompt"
+            )
         elif word_count > 100:
             score += 2
+
+            reason.append(
+                "Long prompt"
+            )
         elif word_count > 40:
             score += 1
-        
 
-        tier_2_matches = self._count_keywords(
-            prompt,
+            reason.append(
+                "Moderate prompt length"
+            )
+        
+        #FIND KEYWORDS FOR TIER-2
+        tier_2_matches = self._find_keywords(
+            normalized_prompt,
             self.TIER_2_KEYWORDS
         )
 
-        score += min(tier_2_matches, 2)
+        # SCORE CAL FOR TIER-2
+        if tier_2_matches:
 
-        tier_3_matches = self._count_keywords(
-            prompt,
+            keyword_score = min(len(tier_2_matches), 2)
+            score += keyword_score
+            reason.append(
+                "Moderate task keywords: " + ", ".join(tier_2_matches)
+            )
+        
+        #FOR TIER-3
+        tier_3_matches = self._find_keywords(
+            normalized_prompt,
             self.TIER_3_KEYWORDS
         )
 
-        score += tier_3_matches * 3
-        
+        if tier_3_matches:
+            
+            keyword_score = (len(tier_3_matches) * 3)
+            score += keyword_score
 
-    def _count_keywords(self, text: str, keywords: list[str]) -> int:
-        count = 0
+            reason.append(
+                "Complex task keyword: " + ", ".join(tier_3_matches)
+            )
+    
+        # Numbered instruction
+        numbered_steps = len(
+            re.findall(
+                r"\d+\.",
+                normalized_prompt
+            )
+        )
+
+        if numbered_steps >= 3:
+
+            score += 2
+
+            reason.append(
+                f"{numbered_steps} numbered instructions"
+            )
+
+        elif numbered_steps >= 2:
+
+            score += 1
+
+            reason.append(
+                f"{numbered_steps} numbered instructions"
+            )
+
+        # -------------------------
+        # Multiple questions
+        # -------------------------
+
+        question_count = normalized_prompt.count("?")
+
+        if question_count >= 3:
+
+            score += 2
+
+            reason.append(
+                "Multiple questions"
+            )
+
+        elif question_count >= 2:
+
+            score += 1
+
+            reason.append(
+                "More than one question"
+            )
+
+        # -------------------------
+        # Constraints
+        # -------------------------
+        constraint_keyword = self._find_keywords(
+            normalized_prompt,
+            self.CONSTRAINT_KEYWORDS
+        )
+
+        if len(constraint_keyword) >= 3:
+            score += 2
+
+            reason.append(
+                "Multiple Constraints"
+            )
+        elif len(constraint_keyword) >= 1:
+            score += 1
+
+            reason.append(
+                "Contain constraints"
+            )
+        
+        # final tier..
+        if score >= 6:
+
+            tier = "tier_3"
+
+        elif score >= 3:
+
+            tier = "tier_2"
+
+        else:
+
+            tier = "tier_1"
+
+        return ComplexityResult(
+            tier=tier,
+            score=score,
+            reasons=reason
+        )
+
+    def _find_keywords(
+        self,
+        text: str,
+        keywords: list[str]
+    ) -> list[str]:
+
+        matches = []
 
         for keyword in keywords:
+
             if keyword in text:
-                count+=1
-        return count
+
+                matches.append(
+                    keyword
+                )
+
+        return matches
